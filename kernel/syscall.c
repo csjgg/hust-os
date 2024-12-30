@@ -176,49 +176,65 @@ ssize_t sys_user_close(int fd) { return do_close(fd); }
 //
 // lib call to opendir
 //
-ssize_t sys_user_opendir(char * pathva){
-  char * pathpa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
+ssize_t sys_user_opendir(char *pathva) {
+  char *pathpa =
+      (char *)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
   return do_opendir(pathpa);
 }
 
 //
 // lib call to readdir
 //
-ssize_t sys_user_readdir(int fd, struct dir *vdir){
-  struct dir * pdir = (struct dir *)user_va_to_pa((pagetable_t)(current->pagetable), vdir);
+ssize_t sys_user_readdir(int fd, struct dir *vdir) {
+  struct dir *pdir =
+      (struct dir *)user_va_to_pa((pagetable_t)(current->pagetable), vdir);
   return do_readdir(fd, pdir);
 }
 
 //
 // lib call to mkdir
 //
-ssize_t sys_user_mkdir(char * pathva){
-  char * pathpa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
+ssize_t sys_user_mkdir(char *pathva) {
+  char *pathpa =
+      (char *)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
   return do_mkdir(pathpa);
 }
 
 //
 // lib call to closedir
 //
-ssize_t sys_user_closedir(int fd){
-  return do_closedir(fd);
-}
+ssize_t sys_user_closedir(int fd) { return do_closedir(fd); }
 
 //
 // lib call to link
 //
-ssize_t sys_user_link(char * vfn1, char * vfn2){
-  char * pfn1 = (char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)vfn1);
-  char * pfn2 = (char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)vfn2);
+ssize_t sys_user_link(char *vfn1, char *vfn2) {
+  char *pfn1 =
+      (char *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)vfn1);
+  char *pfn2 =
+      (char *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)vfn2);
   return do_link(pfn1, pfn2);
 }
 
 //
 // lib call to unlink
 //
-ssize_t sys_user_unlink(char * vfn){
-  char * pfn = (char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)vfn);
+ssize_t sys_user_unlink(char *vfn) {
+  char *pfn =
+      (char *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)vfn);
   return do_unlink(pfn);
+}
+
+ssize_t sys_user_read_cwd(char *vfn) {
+  char *pa =
+      (char *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)vfn);
+  return do_rcwd(pa);
+}
+
+ssize_t sys_user_change_cwd(char *vfn) {
+  char *pa =
+      (char *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)vfn);
+  return do_ccwd(pa);
 }
 
 //
@@ -270,6 +286,10 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6,
       return sys_user_link((char *)a1, (char *)a2);
     case SYS_user_unlink:
       return sys_user_unlink((char *)a1);
+    case SYS_user_rcwd:
+      return sys_user_read_cwd((char *)a1);
+    case SYS_user_ccwd:
+      return sys_user_change_cwd((char *)a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

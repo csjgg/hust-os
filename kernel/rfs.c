@@ -496,7 +496,7 @@ struct vinode *rfs_create(struct vinode *parent, struct dentry *sub_dentry) {
   // DO NOT REMOVE ANY CODE BELOW.
   // allocate a free block for the file
   free_dinode->addrs[0] = rfs_alloc_block(parent->sb);
-  free_dinode->blocks = 1;
+  free_dinode->blocks = 0;
   free_dinode->nlinks = 1;
   free_dinode->size = 0;
   free_dinode->type = R_FILE;

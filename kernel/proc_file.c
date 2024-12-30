@@ -23,12 +23,12 @@ void fs_init(void) {
   vfs_init();
 
   // register hostfs and mount it as the root
-  if( register_hostfs() < 0 ) panic( "fs_init: cannot register hostfs.\n" );
+  if (register_hostfs() < 0) panic("fs_init: cannot register hostfs.\n");
   struct device *hostdev = init_host_device("HOSTDEV");
   vfs_mount("HOSTDEV", MOUNT_AS_ROOT);
 
   // register and mount rfs
-  if( register_rfs() < 0 ) panic( "fs_init: cannot register rfs.\n" );
+  if (register_rfs() < 0) panic("fs_init: cannot register rfs.\n");
   struct device *ramdisk0 = init_rfs_device("RAMDISK0");
   rfs_format_dev(ramdisk0);
   vfs_mount("RAMDISK0", MOUNT_DEFAULT);
@@ -40,7 +40,7 @@ void fs_init(void) {
 //
 proc_file_management *init_proc_file_management(void) {
   proc_file_management *pfiles = (proc_file_management *)alloc_page();
-  pfiles->cwd = vfs_root_dentry; // by default, cwd is the root
+  pfiles->cwd = vfs_root_dentry;  // by default, cwd is the root
   pfiles->nfiles = 0;
 
   for (int fd = 0; fd < MAX_FILES; ++fd)
@@ -111,7 +111,7 @@ int do_read(int fd, char *buf, uint64 count) {
 
   char buffer[count + 1];
   int len = vfs_read(pfile, buffer, count);
-  buffer[count] = '\0';
+  buffer[len] = '\0';
   strcpy(buf, buffer);
   return len;
 }
@@ -196,9 +196,7 @@ int do_readdir(int fd, struct dir *dir) {
 //
 // make a new directory
 //
-int do_mkdir(char *pathname) {
-  return vfs_mkdir(pathname);
-}
+int do_mkdir(char *pathname) { return vfs_mkdir(pathname); }
 
 //
 // close a directory
@@ -211,13 +209,33 @@ int do_closedir(int fd) {
 //
 // create hard link to a file
 //
-int do_link(char *oldpath, char *newpath) {
-  return vfs_link(oldpath, newpath);
-}
+int do_link(char *oldpath, char *newpath) { return vfs_link(oldpath, newpath); }
 
 //
 // remove a hard link to a file
 //
-int do_unlink(char *path) {
-  return vfs_unlink(path);
+int do_unlink(char *path) { return vfs_unlink(path); }
+
+int do_rcwd(char *path) {
+  struct dentry *cwd = current->pfiles->cwd;
+  char buf[MAX_PATH_LEN];
+  char buflast[MAX_PATH_LEN];
+  buflast[0] = '\0';
+  while (cwd != NULL) {
+    strcpy(buf, cwd->name);
+    strcat(buf, buflast);
+    cwd = cwd->parent;
+    strcpy(buflast, buf);
+  }
+  strcpy(path, buf);
+  return 0;
+}
+
+int do_ccwd(char *path) {
+  struct dentry *parent = vfs_root_dentry;
+  char miss_name[MAX_PATH_LEN];
+  struct dentry *dentry = lookup_final_dentry(path, &parent, miss_name);
+  if (dentry == NULL) return -1;
+  current->pfiles->cwd = dentry;
+  return 0;
 }
