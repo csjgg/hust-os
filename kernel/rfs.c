@@ -763,9 +763,9 @@ int rfs_hook_closedir(struct vinode *dir_vinode, struct dentry *dentry) {
 
 //
 // read a directory entry from the directory "dir", and the "offset" indicate
-// the position of the entry to be read. if offset is 0, the first entry is read,
-// if offset is 1, the second entry is read, and so on.
-// return: 0 on success, -1 when there are no more entry (end of the list).
+// the position of the entry to be read. if offset is 0, the first entry is
+// read, if offset is 1, the second entry is read, and so on. return: 0 on
+// success, -1 when there are no more entry (end of the list).
 //
 int rfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset) {
   int total_direntrys = dir_vinode->size / sizeof(struct rfs_direntry);
@@ -783,14 +783,14 @@ int rfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset) {
   struct rfs_direntry *p_direntry = dir_cache->dir_base_addr + direntry_index;
 
   // TODO (lab4_2): implement the code to read a directory entry.
-  // hint: in the above code, we had found the directory entry that located at the
-  // *offset, and used p_direntry to point it.
-  // in the remaining processing, we need to return our discovery.
-  // the method of returning is to popular proper members of "dir", more specifically,
-  // dir->name and dir->inum.
-  // note: DO NOT DELETE CODE BELOW PANIC.
-  panic("You need to implement the code for reading a directory entry of rfs in lab4_2.\n" );
+  // hint: in the above code, we had found the directory entry that located at
+  // the *offset, and used p_direntry to point it. in the remaining processing,
+  // we need to return our discovery. the method of returning is to popular
+  // proper members of "dir", more specifically, dir->name and dir->inum. note:
+  // DO NOT DELETE CODE BELOW PANIC.
 
+  strcpy(dir->name, p_direntry->name);
+  dir->inum = p_direntry->inum;
   // DO NOT DELETE CODE BELOW.
   (*offset)++;
   return 0;
@@ -806,7 +806,8 @@ struct vinode *rfs_mkdir(struct vinode *parent, struct dentry *sub_dentry) {
   // ** find a free disk inode to store the file that is going to be created
   struct rfs_dinode *free_dinode = NULL;
   int free_inum = 0;
-  for (int i = 0; i < (RFS_BLKSIZE / RFS_INODESIZE * RFS_MAX_INODE_BLKNUM); i++) {
+  for (int i = 0; i < (RFS_BLKSIZE / RFS_INODESIZE * RFS_MAX_INODE_BLKNUM);
+       i++) {
     free_dinode = rfs_read_dinode(rdev, i);
     if (free_dinode->type == R_FREE) {  // found
       free_inum = i;
@@ -816,7 +817,7 @@ struct vinode *rfs_mkdir(struct vinode *parent, struct dentry *sub_dentry) {
   }
 
   if (free_dinode == NULL)
-    panic( "rfs_mkdir: no more free disk inode, we cannot create directory.\n" );
+    panic("rfs_mkdir: no more free disk inode, we cannot create directory.\n");
 
   // initialize the states of the file being created
   free_dinode->size = 0;
