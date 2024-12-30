@@ -15,7 +15,7 @@
 //
 // handling the syscalls. will call do_syscall() defined in kernel/syscall.c
 //
-static void handle_syscall(trapframe *tf) {
+static void handle_syscall(trapframe* tf) {
   // tf->epc points to the address that our computer will jump to after the trap
   // handling. for a syscall, we should return to the NEXT instruction after its
   // handling. in RV64G, each instruction occupies exactly 32 bits (i.e., 4
@@ -58,9 +58,11 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
       // dynamically increase application stack.
       // hint: first allocate a new physical page, and then, maps the new page
       // to the virtual address that causes the page fault.
-      panic(
-          "You need to implement the operations that actually handle the page "
-          "fault in lab2_3.\n");
+      {
+        uint64 page = (uint64)alloc_page();
+        user_vm_map(current->pagetable, ROUNDDOWN(stval, PGSIZE), PGSIZE, page,
+                    prot_to_type(PROT_WRITE | PROT_READ, 1));
+      }
 
       break;
     default:
