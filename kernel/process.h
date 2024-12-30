@@ -3,6 +3,8 @@
 
 #include "riscv.h"
 
+#define USER_MAX_STACK_PAGE_NUM 20
+
 typedef struct trapframe_t {
   // space to store context (all common registers)
   /* offset:0   */ riscv_regs regs;
@@ -16,7 +18,7 @@ typedef struct trapframe_t {
 
   // kernel page table. added @lab2_1
   /* offset:272 */ uint64 kernel_satp;
-}trapframe;
+} trapframe;
 
 // the extremely simple definition of process, used for begining labs of PKE
 typedef struct process_t {
@@ -26,7 +28,7 @@ typedef struct process_t {
   pagetable_t pagetable;
   // trapframe storing the context of a (User mode) process.
   trapframe* trapframe;
-}process;
+} process;
 
 // switch to run user app
 void switch_to(process*);
