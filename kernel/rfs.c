@@ -474,23 +474,24 @@ struct vinode *rfs_create(struct vinode *parent, struct dentry *sub_dentry) {
   }
 
   if (free_dinode == NULL)
-    panic("rfs_create: no more free disk inode, we cannot create file.\n" );
+    panic("rfs_create: no more free disk inode, we cannot create file.\n");
 
   // initialize the states of the file being created
 
-  // TODO (lab4_1): implement the code for populating the disk inode (free_dinode) 
-  // of a new file being created.
-  // hint:  members of free_dinode to be filled are:
-  // size, should be zero for a new file.
-  // type, see kernel/rfs.h and find the type for a rfs file.
-  // nlinks, i.e., the number of links.
+  // TODO (lab4_1): implement the code for populating the disk inode
+  // (free_dinode) of a new file being created. hint:  members of free_dinode to
+  // be filled are: size, should be zero for a new file. type, see kernel/rfs.h
+  // and find the type for a rfs file. nlinks, i.e., the number of links.
   // blocks, i.e., its block count.
   // Note: DO NOT DELETE CODE BELOW PANIC.
-  panic("You need to implement the code of populating a disk inode in lab4_1.\n" );
 
   // DO NOT REMOVE ANY CODE BELOW.
   // allocate a free block for the file
   free_dinode->addrs[0] = rfs_alloc_block(parent->sb);
+  free_dinode->blocks = 1;
+  free_dinode->nlinks = 1;
+  free_dinode->size = 0;
+  free_dinode->type = R_FILE;
 
   // **  write the disk inode of file being created to disk
   rfs_write_dinode(rdev, free_dinode, free_inum);
@@ -517,7 +518,8 @@ struct vinode *rfs_create(struct vinode *parent, struct dentry *sub_dentry) {
 // LSEEK_CUR: set the file pointer to the current offset plus the offset
 // return 0 if success, otherwise return -1
 //
-int rfs_lseek(struct vinode *f_inode, ssize_t new_offset, int whence, int *offset) {
+int rfs_lseek(struct vinode *f_inode, ssize_t new_offset, int whence,
+              int *offset) {
   int file_size = f_inode->size;
 
   switch (whence) {
@@ -539,7 +541,7 @@ int rfs_lseek(struct vinode *f_inode, ssize_t new_offset, int whence, int *offse
       sprint("rfs_lseek: invalid whence!\n");
       return -1;
   }
-  
+
   return 0;
 }
 
@@ -584,7 +586,7 @@ struct super_block *rfs_get_superblock(struct device *dev) {
   sb->ninodes = d_sb.ninodes;
   sb->s_dev = dev;
 
-  if( sb->magic != RFS_MAGIC ) 
+  if (sb->magic != RFS_MAGIC)
     panic("rfs_get_superblock: wrong ramdisk device!\n");
 
   // build root dentry and root inode
