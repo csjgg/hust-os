@@ -2,29 +2,31 @@
  * contains the implementation of all syscalls.
  */
 
-#include <stdint.h>
-#include <errno.h>
-
-#include "util/types.h"
 #include "syscall.h"
-#include "string.h"
-#include "process.h"
-#include "util/functions.h"
-#include "pmm.h"
-#include "vmm.h"
-#include "sched.h"
-#include "proc_file.h"
 
+#include <errno.h>
+#include <stdint.h>
+
+#include "pmm.h"
+#include "proc_file.h"
+#include "process.h"
+#include "sched.h"
 #include "spike_interface/spike_utils.h"
+#include "string.h"
+#include "util/functions.h"
+#include "util/types.h"
+#include "vmm.h"
 
 //
 // implement the SYS_user_print syscall
 //
-ssize_t sys_user_print(const char* buf, size_t n) {
+ssize_t sys_user_print(const char *buf, size_t n) {
   // buf is now an address in user space of the given app's user stack,
-  // so we have to transfer it into phisical address (kernel is running in direct mapping).
-  assert( current );
-  char* pa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)buf);
+  // so we have to transfer it into phisical address (kernel is running in
+  // direct mapping).
+  assert(current);
+  char *pa =
+      (char *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)buf);
   sprint(pa);
   return 0;
 }
@@ -35,7 +37,7 @@ ssize_t sys_user_print(const char* buf, size_t n) {
 ssize_t sys_user_exit(uint64 code) {
   sprint("User exit with code:%d.\n", code);
   // reclaim the current process, and reschedule. added @lab3_1
-  free_process( current );
+  free_process(current);
   schedule();
   return 0;
 }
@@ -44,22 +46,24 @@ ssize_t sys_user_exit(uint64 code) {
 // maybe, the simplest implementation of malloc in the world ... added @lab2_2
 //
 uint64 sys_user_allocate_page() {
-  void* pa = alloc_page();
+  void *pa = alloc_page();
   uint64 va;
-  // if there are previously reclaimed pages, use them first (this does not change the
-  // size of the heap)
+  // if there are previously reclaimed pages, use them first (this does not
+  // change the size of the heap)
   if (current->user_heap.free_pages_count > 0) {
-    va =  current->user_heap.free_pages_address[--current->user_heap.free_pages_count];
+    va = current->user_heap
+             .free_pages_address[--current->user_heap.free_pages_count];
     assert(va < current->user_heap.heap_top);
   } else {
-    // otherwise, allocate a new page (this increases the size of the heap by one page)
+    // otherwise, allocate a new page (this increases the size of the heap by
+    // one page)
     va = current->user_heap.heap_top;
     current->user_heap.heap_top += PGSIZE;
 
     current->mapped_info[HEAP_SEGMENT].npages++;
   }
   user_vm_map((pagetable_t)current->pagetable, va, PGSIZE, (uint64)pa,
-         prot_to_type(PROT_WRITE | PROT_READ, 1));
+              prot_to_type(PROT_WRITE | PROT_READ, 1));
 
   return va;
 }
@@ -70,7 +74,8 @@ uint64 sys_user_allocate_page() {
 uint64 sys_user_free_page(uint64 va) {
   user_vm_unmap((pagetable_t)current->pagetable, va, PGSIZE, 1);
   // add the reclaimed page to the free page list
-  current->user_heap.free_pages_address[current->user_heap.free_pages_count++] = va;
+  current->user_heap.free_pages_address[current->user_heap.free_pages_count++] =
+      va;
   return 0;
 }
 
@@ -79,7 +84,7 @@ uint64 sys_user_free_page(uint64 va) {
 //
 ssize_t sys_user_fork() {
   sprint("User call fork.\n");
-  return do_fork( current );
+  return do_fork(current);
 }
 
 //
@@ -88,10 +93,10 @@ ssize_t sys_user_fork() {
 ssize_t sys_user_yield() {
   // TODO (lab3_2): implment the syscall of yield.
   // hint: the functionality of yield is to give up the processor. therefore,
-  // we should set the status of currently running process to READY, insert it in
-  // the rear of ready queue, and finally, schedule a READY process to run.
-  panic( "You need to implement the yield syscall in lab3_2.\n" );
-
+  // we should set the status of currently running process to READY, insert it
+  // in the rear of ready queue, and finally, schedule a READY process to run.
+  insert_to_ready_queue(current);
+  schedule();
   return 0;
 }
 
@@ -99,7 +104,8 @@ ssize_t sys_user_yield() {
 // open file
 //
 ssize_t sys_user_open(char *pathva, int flags) {
-  char* pathpa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
+  char *pathpa =
+      (char *)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
   return do_open(pathpa, flags);
 }
 
@@ -108,13 +114,14 @@ ssize_t sys_user_open(char *pathva, int flags) {
 //
 ssize_t sys_user_read(int fd, char *bufva, uint64 count) {
   int i = 0;
-  while (i < count) { // count can be greater than page size
+  while (i < count) {  // count can be greater than page size
     uint64 addr = (uint64)bufva + i;
     uint64 pa = lookup_pa((pagetable_t)current->pagetable, addr);
     uint64 off = addr - ROUNDDOWN(addr, PGSIZE);
     uint64 len = count - i < PGSIZE - off ? count - i : PGSIZE - off;
     uint64 r = do_read(fd, (char *)pa + off, len);
-    i += r; if (r < len) return i;
+    i += r;
+    if (r < len) return i;
   }
   return count;
 }
@@ -124,13 +131,14 @@ ssize_t sys_user_read(int fd, char *bufva, uint64 count) {
 //
 ssize_t sys_user_write(int fd, char *bufva, uint64 count) {
   int i = 0;
-  while (i < count) { // count can be greater than page size
+  while (i < count) {  // count can be greater than page size
     uint64 addr = (uint64)bufva + i;
     uint64 pa = lookup_pa((pagetable_t)current->pagetable, addr);
     uint64 off = addr - ROUNDDOWN(addr, PGSIZE);
     uint64 len = count - i < PGSIZE - off ? count - i : PGSIZE - off;
     uint64 r = do_write(fd, (char *)pa + off, len);
-    i += r; if (r < len) return i;
+    i += r;
+    if (r < len) return i;
   }
   return count;
 }
@@ -146,7 +154,8 @@ ssize_t sys_user_lseek(int fd, int offset, int whence) {
 // read vinode
 //
 ssize_t sys_user_stat(int fd, struct istat *istat) {
-  struct istat * pistat = (struct istat *)user_va_to_pa((pagetable_t)(current->pagetable), istat);
+  struct istat *pistat =
+      (struct istat *)user_va_to_pa((pagetable_t)(current->pagetable), istat);
   return do_stat(fd, pistat);
 }
 
@@ -154,16 +163,15 @@ ssize_t sys_user_stat(int fd, struct istat *istat) {
 // read disk inode
 //
 ssize_t sys_user_disk_stat(int fd, struct istat *istat) {
-  struct istat * pistat = (struct istat *)user_va_to_pa((pagetable_t)(current->pagetable), istat);
+  struct istat *pistat =
+      (struct istat *)user_va_to_pa((pagetable_t)(current->pagetable), istat);
   return do_disk_stat(fd, pistat);
 }
 
 //
 // close file
 //
-ssize_t sys_user_close(int fd) {
-  return do_close(fd);
-}
+ssize_t sys_user_close(int fd) { return do_close(fd); }
 
 //
 // lib call to opendir
@@ -217,10 +225,11 @@ ssize_t sys_user_unlink(char * vfn){
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
 //
-long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7) {
+long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6,
+                long a7) {
   switch (a0) {
     case SYS_user_print:
-      return sys_user_print((const char*)a1, a2);
+      return sys_user_print((const char *)a1, a2);
     case SYS_user_exit:
       return sys_user_exit(a1);
     // added @lab2_2
