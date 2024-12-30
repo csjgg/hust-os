@@ -576,30 +576,42 @@ int rfs_disk_stat(struct vinode *vinode, struct istat *istat) {
 }
 
 //
-// create a hard link under a direntry "parent" for an existing file of "link_node"
+// create a hard link under a direntry "parent" for an existing file of
+// "link_node"
 //
-int rfs_link(struct vinode *parent, struct dentry *sub_dentry, struct vinode *link_node) {
-  // TODO (lab4_3): we now need to establish a hard link to an existing file whose vfs
-  // inode is "link_node". To do that, we need first to know the name of the new (link)
-  // file, and then, we need to increase the link count of the existing file. Lastly, 
-  // we need to make the changes persistent to disk. To know the name of the new (link)
-  // file, you need to stuty the structure of dentry, that contains the name member;
-  // To incease the link count of the existing file, you need to study the structure of
-  // vfs inode, since it contains the inode information of the existing file.
+int rfs_link(struct vinode *parent, struct dentry *sub_dentry,
+             struct vinode *link_node) {
+  // TODO (lab4_3): we now need to establish a hard link to an existing file
+  // whose vfs inode is "link_node". To do that, we need first to know the name
+  // of the new (link) file, and then, we need to increase the link count of the
+  // existing file. Lastly, we need to make the changes persistent to disk. To
+  // know the name of the new (link) file, you need to stuty the structure of
+  // dentry, that contains the name member; To incease the link count of the
+  // existing file, you need to study the structure of vfs inode, since it
+  // contains the inode information of the existing file.
   //
   // hint: to accomplish this experiment, you need to:
   // 1) increase the link count of the file to be hard-linked;
-  // 2) append the new (link) file as a dentry to its parent directory; you can use 
+  // 2) append the new (link) file as a dentry to its parent directory; you can
+  // use
   //    rfs_add_direntry here.
   // 3) persistent the changes to disk. you can use rfs_write_back_vinode here.
   //
-  panic("You need to implement the code for creating a hard link in lab4_3.\n" );
+  link_node->nlinks++;
+  if (rfs_add_direntry(parent, sub_dentry->name, link_node->inum)) {
+    panic("link: add direntry failed");
+  }
+  if (rfs_write_back_vinode(link_node)) {
+    panic("link: write back link node failed");
+  }
+  return 0;
 }
 
 //
 // remove a hard link with "name" under a direntry "parent"
 //
-int rfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinode *unlink_vinode) {
+int rfs_unlink(struct vinode *parent, struct dentry *sub_dentry,
+               struct vinode *unlink_vinode) {
   struct rfs_device *rdev = rfs_device_list[parent->sb->s_dev->dev_id];
 
   // ** find the direntry in the directory file
@@ -630,8 +642,8 @@ int rfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinode *
   // ** read the disk inode of the file to be unlinked
   struct rfs_dinode *unlink_dinode = rfs_read_dinode(rdev, inum);
 
-  // if this assertion fails, it indicates that the previous modification to nlinks
-  // was not written back to disk, which is not allowed
+  // if this assertion fails, it indicates that the previous modification to
+  // nlinks was not written back to disk, which is not allowed
   assert(unlink_vinode->nlinks == unlink_dinode->nlinks);
 
   // ** decrease vinode nlinks by 1
@@ -672,7 +684,7 @@ int rfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinode *
     struct rfs_direntry *this_block = (struct rfs_direntry *)alloc_page();
     memcpy(this_block, rdev->iobuffer, RFS_BLKSIZE);
 
-    // copy the first direntry of this block to the last direntry 
+    // copy the first direntry of this block to the last direntry
     // of previous block
     memcpy(previous_block + one_block_direntrys - 1, rdev->iobuffer,
            sizeof(struct rfs_direntry));
