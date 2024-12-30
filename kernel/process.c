@@ -105,6 +105,8 @@ process* alloc_process() {
   }
 
   // init proc[i]'s vm space
+  procs[i].cpid = 0;
+  procs[i].child_num = 0;
   procs[i].trapframe =
       (trapframe*)alloc_page();  // trapframe, used to save context
   memset(procs[i].trapframe, 0, sizeof(trapframe));
@@ -253,25 +255,46 @@ int do_fork(process* parent) {
         // corresponding virtual address region of child to the physical pages
         // that actually store the code segment of parent process. DO NOT COPY
         // THE PHYSICAL PAGES, JUST MAP THEM.
-        user_vm_map(child->pagetable, parent->mapped_info[i].va,
-                    parent->mapped_info[i].npages * PGSIZE,
-                    lookup_pa(parent->pagetable, parent->mapped_info[i].va),
-                    prot_to_type(PROT_EXEC | PROT_READ, 1));
+        {
+          user_vm_map(child->pagetable, parent->mapped_info[i].va,
+                      parent->mapped_info[i].npages * PGSIZE,
+                      lookup_pa(parent->pagetable, parent->mapped_info[i].va),
+                      prot_to_type(PROT_EXEC | PROT_READ, 1));
 
-        // after mapping, register the vm region (do not delete codes below!)
+          // after mapping, register the vm region (do not delete codes below!)
+          child->mapped_info[child->total_mapped_region].va =
+              parent->mapped_info[i].va;
+          child->mapped_info[child->total_mapped_region].npages =
+              parent->mapped_info[i].npages;
+          child->mapped_info[child->total_mapped_region].seg_type =
+              CODE_SEGMENT;
+          child->total_mapped_region++;
+          break;
+        }
+      case DATA_SEGMENT: {
+        void* pa = alloc_page();
+        memcpy(pa,
+               (void*)lookup_pa(parent->pagetable, parent->mapped_info[i].va),
+               PGSIZE);
+        user_vm_map(child->pagetable, parent->mapped_info[i].va, PGSIZE,
+                    (uint64)pa,
+                    prot_to_type(PROT_READ | PROT_WRITE | PROT_EXEC, 1));
         child->mapped_info[child->total_mapped_region].va =
             parent->mapped_info[i].va;
         child->mapped_info[child->total_mapped_region].npages =
             parent->mapped_info[i].npages;
-        child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
         child->total_mapped_region++;
         break;
+      }
     }
   }
 
   child->status = READY;
   child->trapframe->regs.a0 = 0;
   child->parent = parent;
+  assert(parent->child_num < 16);
+  parent->cpids[parent->child_num++] = child->pid;
   insert_to_ready_queue(child);
 
   return child->pid;

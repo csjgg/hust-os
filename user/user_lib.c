@@ -1,21 +1,22 @@
 /*
  * The supporting library for applications.
- * Actually, supporting routines for applications are catalogued as the user 
- * library. we don't do that in PKE to make the relationship between application 
+ * Actually, supporting routines for applications are catalogued as the user
+ * library. we don't do that in PKE to make the relationship between application
  * and user library more straightforward.
  */
 
 #include "user_lib.h"
-#include "util/types.h"
-#include "util/snprintf.h"
-#include "kernel/syscall.h"
 
-uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, uint64 a5, uint64 a6,
-                 uint64 a7) {
+#include "kernel/syscall.h"
+#include "util/snprintf.h"
+#include "util/types.h"
+
+uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4,
+                    uint64 a5, uint64 a6, uint64 a7) {
   int ret;
 
-  // before invoking the syscall, arguments of do_user_call are already loaded into the argument
-  // registers (a0-a7) of our (emulated) risc-v machine.
+  // before invoking the syscall, arguments of do_user_call are already loaded
+  // into the argument registers (a0-a7) of our (emulated) risc-v machine.
   asm volatile(
       "ecall\n"
       "sw a0, %0"  // returns a 32-bit value
@@ -47,7 +48,7 @@ int printu(const char* s, ...) {
 // applications need to call exit to quit execution.
 //
 int exit(int code) {
-  return do_user_call(SYS_user_exit, code, 0, 0, 0, 0, 0, 0); 
+  return do_user_call(SYS_user_exit, code, 0, 0, 0, 0, 0, 0);
 }
 
 //
@@ -66,13 +67,14 @@ void naive_free(void* va) {
 
 //
 // lib call to naive_fork
-int fork() {
-  return do_user_call(SYS_user_fork, 0, 0, 0, 0, 0, 0, 0);
-}
+int fork() { return do_user_call(SYS_user_fork, 0, 0, 0, 0, 0, 0, 0); }
 
 //
 // lib call to yield
 //
-void yield() {
-  do_user_call(SYS_user_yield, 0, 0, 0, 0, 0, 0, 0);
-}
+void yield() { do_user_call(SYS_user_yield, 0, 0, 0, 0, 0, 0, 0); }
+
+//
+// lib call to wait
+//
+void wait(int pid) { do_user_call(SYS_user_wait, pid, 0, 0, 0, 0, 0, 0); }
